@@ -62,6 +62,10 @@ export const sendEmail = async ({ to, subject, text, html }) => {
         ? 'onboarding@resend.dev' // Resend Free tier requires onboarding@resend.dev for unverified domains
         : process.env.MAIL_FROM_ADDRESS || 'onboarding@resend.dev';
 
+      // Resend sandbox mode fallback: redirect all emails to the verified sandbox email to avoid API rejection
+      const targetRecipient = process.env.RESEND_SANDBOX_EMAIL || 'sarathmullath9656@gmail.com';
+      console.log(`[RESEND SANDBOX] Redirecting email from ${to} to verified test email: ${targetRecipient}`);
+
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -70,8 +74,8 @@ export const sendEmail = async ({ to, subject, text, html }) => {
         },
         body: JSON.stringify({
           from: `"${process.env.MAIL_FROM_NAME || 'Clinic Queue System'}" <${fromAddress}>`,
-          to,
-          subject,
+          to: targetRecipient,
+          subject: `[To: ${to}] ${subject}`,
           text: text || '',
           html: html || '',
         })
