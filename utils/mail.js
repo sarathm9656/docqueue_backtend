@@ -55,6 +55,36 @@ const getTransporter = () => {
  */
 export const sendEmail = async ({ to, subject, text, html }) => {
   try {
+    // Check if Resend API Key is configured (to bypass Render SMTP block)
+    if (process.env.RESEND_API_KEY) {
+      console.log("Using Resend HTTP API for sending email...");
+      const fromAddress = process.env.MAIL_FROM_ADDRESS && process.env.MAIL_FROM_ADDRESS.includes('@clinic.com')
+        ? 'onboarding@resend.dev' // Resend Free tier requires onboarding@resend.dev for unverified domains
+        : process.env.MAIL_FROM_ADDRESS || 'onboarding@resend.dev';
+
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+        },
+        body: JSON.stringify({
+          from: `"${process.env.MAIL_FROM_NAME || 'Clinic Queue System'}" <${fromAddress}>`,
+          to,
+          subject,
+          text: text || '',
+          html: html || '',
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Resend API returned an error.');
+      }
+      console.log(`Email sent successfully via Resend API: ${data.id}`);
+      return { messageId: data.id };
+    }
+
     const transporter = getTransporter();
     
     const mailOptions = {
